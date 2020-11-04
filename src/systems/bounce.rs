@@ -17,7 +17,7 @@ impl<'s> System<'s> for BounceSystem {
 
     fn run(&mut self, (mut balls, paddles, transforms): Self::SystemData) {
 
-        for (bal, transform) in (&mut balls, &transforms).join() {
+        for (ball, transform) in (&mut balls, &transforms).join() {
             let ball_x = transform.translation().x;
             let ball_y = transform.translation().y;
 

@@ -6,14 +6,16 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
 };
 
+use amethyst::core::timing::Time;
+
 pub const ARENA_HEIGHT: f32 = 100.0;
 pub const ARENA_WIDTH: f32 = 100.0;
 
 pub const PADDLE_HEIGHT: f32 = 16.0;
 pub const PADDLE_WIDTH: f32 = 4.0;
 
-pub const BALL_VELOCITY_X: f32 = 75.0;
-pub const BALL_VELOCITY_Y: f32 = 50.0;
+pub const BALL_VELOCITY_X: f32 = 10.0;
+pub const BALL_VELOCITY_Y: f32 = 5.0;
 pub const BALL_RADIUS: f32 = 2.0;
 
 #[derive(PartialEq, Eq)]
@@ -50,8 +52,6 @@ pub struct Ball {
 impl Component for Ball {
     type Storage = DenseVecStorage<Self>;
 }
-
-pub struct Pong;
 
 fn initialise_camera(world: &mut World) {
     // Setup camera in a way that our screen covers whole arena and (0, 0) is in the bottom left.
@@ -138,6 +138,12 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
     )
 }
 
+#[derive(Default)]
+pub struct Pong {
+    ball_spawn_timer: Option<f32>,
+    sprite_sheet_handle: Option<Handle<SpriteSheet>>
+}
+
 impl SimpleState for Pong {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
@@ -145,11 +151,27 @@ impl SimpleState for Pong {
         world.register::<Paddle>();
         world.register::<Ball>();
 
-        let sprite_sheet_handle = load_sprite_sheet(world);
+        self.ball_spawn_timer.replace(1.0);
 
+        self.sprite_sheet_handle.replace(load_sprite_sheet(world));
+
+        initialise_paddles(world, self.sprite_sheet_handle.clone().unwrap());
         initialise_camera(world);
-        initialise_ball(world, sprite_sheet_handle.clone());
-        initialise_paddles(world, sprite_sheet_handle);
-        load_sprite_sheet(world);
+    }
+
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        if let Some(mut timer) = self.ball_spawn_timer.take() {
+            {
+                let time = data.world.fetch::<Time>();
+                timer -= time.delta_seconds();
+            }
+
+            if timer <= 0.0 {
+                initialise_ball(data.world, self.sprite_sheet_handle.clone().unwrap());
+            } else {
+                self.ball_spawn_timer.replace(timer);
+            }
+        }
+        Trans::None
     }
 }
